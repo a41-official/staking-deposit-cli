@@ -10,6 +10,7 @@ from ssz import (
 from staking_deposit.utils.constants import (
     DOMAIN_BLS_TO_EXECUTION_CHANGE,
     DOMAIN_DEPOSIT,
+    DOMAIN_VOLUNTARY_EXIT,
     ZERO_BYTES32,
 )
 
@@ -56,6 +57,17 @@ def compute_deposit_domain(fork_version: bytes) -> bytes:
     return domain_type + fork_data_root[:28]
 
 
+def compute_voluntary_exit_domain(fork_version: bytes, genesis_validators_root: bytes) -> bytes:
+    """
+    VOLUNTARY_EXIT-only `compute_domain`
+    """
+    if len(fork_version) != 4:
+        raise ValueError(f"Fork version should be in 4 bytes. Got {len(fork_version)}.")
+    domain_type = DOMAIN_VOLUNTARY_EXIT
+    fork_data_root = compute_fork_data_root(fork_version, genesis_validators_root)
+    return domain_type + fork_data_root[:28]
+
+
 def compute_bls_to_execution_change_domain(fork_version: bytes, genesis_validators_root: bytes) -> bytes:
     """
     BLS_TO_EXECUTION_CHANGE-only `compute_domain`
@@ -88,6 +100,26 @@ def compute_signing_root(ssz_object: Serializable, domain: bytes) -> bytes:
         domain=domain,
     )
     return domain_wrapped_object.hash_tree_root
+
+
+class VoluntaryExit(Serializable):
+    """
+    Ref: https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/beacon-chain.md#voluntaryexit
+    """
+    fields = [
+        ('epoch', uint64),
+        ('validator_index', uint64)
+    ]
+
+
+class SignedVoluntaryExit(Serializable):
+    """
+    Ref: https://github.com/ethereum/consensus-specs/blob/dev/specs/phase0/beacon-chain.md#signedvoluntaryexit
+    """
+    fields = [
+        ('message', VoluntaryExit),
+        ('signature', bytes96)
+    ]
 
 
 class DepositMessage(Serializable):
